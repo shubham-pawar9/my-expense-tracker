@@ -9,7 +9,12 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Expense Tracker',
   description: 'Track your daily expenses and manage your budget',
-  manifest: '/manifest.ts',
+  themeColor: "#000000",
+  manifest: "/manifest.json", // ✅ Required for PWA
+  icons: {
+    icon: "/icon-192.png", // works as favicon too
+    apple: "/icon-192.png",
+  },
 }
 
 export default function RootLayout({
