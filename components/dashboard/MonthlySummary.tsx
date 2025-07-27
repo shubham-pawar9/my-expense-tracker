@@ -75,19 +75,21 @@ export const MonthlySummary: React.FC = () => {
       // Fetch user settings for monthly income
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid))
+        console.log("userDoc", userDoc)
         if (userDoc.exists()) {
           const userData = userDoc.data()
           setOnlyFixedExpenses((userData.fixedExpenses || 0))
           setMonthlyIncome(userData.monthlyIncome || 0)
           setTotalExpenses((Math.round(total * 100) / 100) + (userData.fixedExpenses || 0))
           // setTotalExpenses(prev => Math.round((prev + userData.fixedExpenses) * 100) / 100)
+          console.log("totalExpenses", totalExpenses)
         } else {
           // Set default income if user settings don't exist
-          setMonthlyIncome(5000)
+          setMonthlyIncome(0)
         }
       } catch (userError) {
         console.error('Error fetching user settings:', userError)
-        setMonthlyIncome(5000) // Default fallback
+        setMonthlyIncome(0) // Default fallback
       }
     } catch (error: any) {
       console.error('Error fetching monthly data:', error)
@@ -134,9 +136,11 @@ export const MonthlySummary: React.FC = () => {
                   Monthly Income
                 </Typography>
               </Box>
-              <Typography variant="h5" color="success.main" sx={{ fontSize: isMobile ? '1.5rem' : '1.75rem' }}>
+              {monthlyIncome > 0 ? <Typography variant="h5" color="success.main" sx={{ fontSize: isMobile ? '1.5rem' : '1.75rem' }}>
                 ₹{monthlyIncome.toLocaleString()}
-              </Typography>
+              </Typography> : <Typography variant="h5" color="error.main" sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}>
+                Add your monthly income in settings
+              </Typography>}
             </CardContent>
           </Card>
         </Grid>
