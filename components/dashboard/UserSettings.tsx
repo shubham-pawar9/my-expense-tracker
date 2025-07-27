@@ -16,6 +16,8 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/auth/AuthProvider'
+import { toast } from 'react-hot-toast'
+import { FourSquare } from 'react-loading-indicators'
 
 interface UserSettingsProps {
   open: boolean
@@ -23,7 +25,7 @@ interface UserSettingsProps {
 }
 
 export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => {
-  const [monthlyIncome, setMonthlyIncome] = useState<number>(0)
+  const [monthlyIncome, setMonthlyIncome] = useState<number>()
   const [fixedExpenses, setFixedExpenses] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -65,10 +67,12 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
         fixedExpenses: fixedExpenses ? parseFloat(fixedExpenses) : 0,
         updatedAt: new Date(),
       }, { merge: true })
+      toast.success('Settings saved successfully')
 
       onClose()
     } catch (error) {
       console.error('Error saving user settings:', error)
+      toast.error('Failed to save settings')
     } finally {
       setSaving(false)
     }
@@ -79,7 +83,7 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
       <DialogTitle>User Settings</DialogTitle>
       <DialogContent>
         {loading ? (
-          <Typography>Loading settings...</Typography>
+          <FourSquare color="#1976d2" size="small" text="Loading settings..." textColor="#1976d2" />
         ) : (
           <Box sx={{ pt: 1 }}>
             <Typography variant="h6" gutterBottom>

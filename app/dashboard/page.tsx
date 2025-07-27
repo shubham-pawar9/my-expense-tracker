@@ -6,6 +6,7 @@ import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { Box, CircularProgress, Typography } from '@mui/material'
+import { FourSquare } from 'react-loading-indicators'
 
 export default function DashboardPage() {
   const { user, loading } = useAuth()
@@ -28,8 +29,7 @@ export default function DashboardPage() {
           flexDirection: 'column',
         }}
       >
-        <CircularProgress />
-        <Typography sx={{ mt: 2 }}>Loading...</Typography>
+        <FourSquare color="#1976d2" size="small" text="Loading..." textColor="#1976d2" />
       </Box>
     )
   }

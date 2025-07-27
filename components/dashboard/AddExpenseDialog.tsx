@@ -22,6 +22,7 @@ import { addDoc, collection } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { format } from 'date-fns'
+import { toast } from 'react-hot-toast'
 
 interface AddExpenseDialogProps {
   open: boolean
@@ -72,7 +73,7 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ open, onClos
         date,
         createdAt: new Date(),
       })
-
+      toast.success('Expense added successfully')
       // Reset form
       setAmount('')
       setCategory('')
@@ -84,6 +85,7 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ open, onClos
       onExpenseAdded()
     } catch (error: any) {
       setError(error.message || 'Failed to add expense')
+      toast.error('Failed to add expense')
     } finally {
       setLoading(false)
     }

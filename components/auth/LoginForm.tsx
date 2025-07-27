@@ -14,7 +14,7 @@ import {
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
-
+import { toast } from 'react-hot-toast'
 interface LoginFormProps {
   onSwitchToSignup: () => void
 }
@@ -34,8 +34,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
     try {
       await signInWithEmailAndPassword(auth, email, password)
       router.push('/dashboard')
+      toast.success('Logged in successfully')
     } catch (error: any) {
       setError(error.message || 'Failed to login')
+      toast.error('Failed to login')
     } finally {
       setLoading(false)
     }

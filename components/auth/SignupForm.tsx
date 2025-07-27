@@ -14,7 +14,7 @@ import {
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
-
+import { toast } from 'react-hot-toast'
 interface SignupFormProps {
   onSwitchToLogin: () => void
 }
@@ -46,8 +46,10 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
     try {
       await createUserWithEmailAndPassword(auth, email, password)
       router.push('/dashboard')
+      toast.success('Account created successfully')
     } catch (error: any) {
       setError(error.message || 'Failed to create account')
+      toast.error('Failed to create account')
     } finally {
       setLoading(false)
     }

@@ -27,6 +27,7 @@ import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { Expense } from '@/types'
 import { format } from 'date-fns'
+import { toast } from 'react-hot-toast'
 
 const getCategoryColor = (category: string) => {
   const colors: { [key: string]: string } = {
@@ -93,9 +94,11 @@ export const ExpenseList: React.FC = () => {
     try {
       await deleteDoc(doc(db, 'expenses', expenseId))
       setExpenses(expenses.filter(expense => expense.id !== expenseId))
+      toast.success('Expense deleted successfully')
     } catch (error: any) {
       console.error('Error deleting expense:', error)
       setError('Failed to delete expense')
+      toast.error('Failed to delete expense')
     }
   }
 

@@ -37,6 +37,7 @@ import { AddExpenseDialog } from '@/components/dashboard/AddExpenseDialog'
 import { ExpenseList } from '@/components/dashboard/ExpenseList'
 import { MonthlySummary } from '@/components/dashboard/MonthlySummary'
 import { UserSettings } from '@/components/dashboard/UserSettings'
+import { toast } from 'react-hot-toast'
 
 export const Dashboard: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -51,10 +52,12 @@ export const Dashboard: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth)
+      await signOut(auth);
+      toast.success('Logged out successfully')
       router.push('/')
     } catch (error) {
       console.error('Error signing out:', error)
+      toast.error('Failed to logout')
     }
   }
 

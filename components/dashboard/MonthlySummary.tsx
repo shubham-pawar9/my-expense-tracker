@@ -32,7 +32,8 @@ export const MonthlySummary: React.FC = () => {
   const { user } = useAuth()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-
+  const [onlyMonthlyExpenses, setOnlyMonthlyExpenses] = useState(0);
+  const [onlyFixedExpenses, setOnlyFixedExpenses] = useState(0);
   useEffect(() => {
     if (user) {
       fetchMonthlyData()
@@ -69,15 +70,17 @@ export const MonthlySummary: React.FC = () => {
           total += data.amount || 0
         }
       })
-      
-      setTotalExpenses(Math.round(total * 100) / 100)
+      setOnlyMonthlyExpenses((Math.round(total * 100) / 100))
 
       // Fetch user settings for monthly income
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid))
         if (userDoc.exists()) {
           const userData = userDoc.data()
+          setOnlyFixedExpenses((userData.fixedExpenses || 0))
           setMonthlyIncome(userData.monthlyIncome || 0)
+          setTotalExpenses((Math.round(total * 100) / 100) + (userData.fixedExpenses || 0))
+          // setTotalExpenses(prev => Math.round((prev + userData.fixedExpenses) * 100) / 100)
         } else {
           // Set default income if user settings don't exist
           setMonthlyIncome(5000)
@@ -149,6 +152,11 @@ export const MonthlySummary: React.FC = () => {
               </Box>
               <Typography variant="h5" color="error.main" sx={{ fontSize: isMobile ? '1.5rem' : '1.75rem' }}>
                 ₹{totalExpenses.toLocaleString()}
+              </Typography>
+              <Typography variant="h5" color="error.main" sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}>
+                Monthly Expenses: ₹{onlyMonthlyExpenses.toLocaleString()}
+                <br />
+                Fixed Expenses: ₹{onlyFixedExpenses.toLocaleString()}
               </Typography>
             </CardContent>
           </Card>

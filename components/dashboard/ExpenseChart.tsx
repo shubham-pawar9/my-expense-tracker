@@ -151,7 +151,7 @@ export const ExpenseChart: React.FC = () => {
         flexDirection: isMobile ? 'column' : 'row',
         gap: isMobile ? 1 : 0
       }}>
-        <Typography variant="h6" sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}>
+        <Typography variant="h6" sx={{ fontSize: isMobile ? '0.8rem' : '1rem' }}>
           Expense Breakdown
         </Typography>
         <FormControl size="small" sx={{ minWidth: isMobile ? '100%' : 120 }}>
