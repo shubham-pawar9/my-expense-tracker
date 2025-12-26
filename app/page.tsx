@@ -7,7 +7,6 @@ import { SignupForm } from '@/components/auth/SignupForm'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { FourSquare } from 'react-loading-indicators'
 
 export default function Home() {
   const [isLogin, setIsLogin] = useState(true)
@@ -24,7 +23,7 @@ export default function Home() {
     return (
       <Container>
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-          <FourSquare color="#1976d2" size="small" text="Expence-Tracker" textColor="#1976d2" />
+          <Typography>Loading...</Typography>
         </Box>
       </Container>
     )

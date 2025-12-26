@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+
 * {
   box-sizing: border-box;
   padding: 0;
@@ -8,16 +10,12 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
+  font-family: 'DM Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background: #f8fafc;
+  color: #1e293b;
 }
 
 a {
@@ -25,8 +23,158 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+
+/* Smooth transitions for all elements */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Remove transition from animations */
+.MuiCircularProgress-root * {
+  transition: none !important;
+}
+
+/* Card hover effects */
+.MuiCard-root {
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* Button ripple effect enhancement */
+.MuiButton-root {
+  overflow: hidden;
+  position: relative;
+}
+
+/* Dialog backdrop */
+.MuiDialog-root .MuiBackdrop-root {
+  backdrop-filter: blur(4px);
+}
+
+/* Table row hover */
+.MuiTableRow-root:hover {
+  background-color: #f8fafc !important;
+}
+
+/* Chip animations */
+.MuiChip-root {
+  transition: transform 0.15s ease !important;
+}
+
+.MuiChip-root:hover {
+  transform: scale(1.02);
+}
+
+/* Toggle Button Group styling */
+.MuiToggleButtonGroup-root {
+  background: white;
+  border-radius: 12px !important;
+}
+
+.MuiToggleButton-root {
+  border: none !important;
+  border-radius: 10px !important;
+  margin: 4px !important;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Pulse animation for notifications */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
   }
-} 
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Loading skeleton animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Mobile optimizations */
+@media (max-width: 600px) {
+  body {
+    font-size: 14px;
+  }
+  
+  .MuiCard-root {
+    border-radius: 12px !important;
+  }
+  
+  .MuiPaper-root {
+    border-radius: 12px !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white;
+  }
+  
+  .MuiAppBar-root,
+  .MuiDrawer-root,
+  .MuiFab-root {
+    display: none !important;
+  }
+}

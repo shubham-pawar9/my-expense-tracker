@@ -10,14 +10,12 @@ import {
   Button,
   Typography,
   Box,
-  Divider,
   InputAdornment,
+  Alert,
 } from '@mui/material'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { toast } from 'react-hot-toast'
-import { FourSquare } from 'react-loading-indicators'
 
 interface UserSettingsProps {
   open: boolean
@@ -25,15 +23,16 @@ interface UserSettingsProps {
 }
 
 export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => {
-  const [monthlyIncome, setMonthlyIncome] = useState<number>()
-  const [fixedExpenses, setFixedExpenses] = useState('')
+  const [monthlyIncome, setMonthlyIncome] = useState<number>(0)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [success, setSuccess] = useState(false)
   const { user } = useAuth()
 
   useEffect(() => {
     if (open && user) {
       loadUserSettings()
+      setSuccess(false)
     }
   }, [open, user])
 
@@ -47,7 +46,6 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
       if (userDoc.exists()) {
         const data = userDoc.data()
         setMonthlyIncome(data.monthlyIncome || 0)
-        setFixedExpenses(data.fixedExpenses?.toString() || '')
       }
     } catch (error) {
       console.error('Error loading user settings:', error)
@@ -64,15 +62,15 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
       await setDoc(doc(db, 'users', user.uid), {
         email: user.email,
         monthlyIncome: monthlyIncome,
-        fixedExpenses: fixedExpenses ? parseFloat(fixedExpenses) : 0,
         updatedAt: new Date(),
       }, { merge: true })
-      toast.success('Settings saved successfully')
 
-      onClose()
+      setSuccess(true)
+      setTimeout(() => {
+        onClose()
+      }, 1000)
     } catch (error) {
       console.error('Error saving user settings:', error)
-      toast.error('Failed to save settings')
     } finally {
       setSaving(false)
     }
@@ -80,17 +78,25 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>User Settings</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 600 }}>
+        ⚙️ User Settings
+      </DialogTitle>
       <DialogContent>
         {loading ? (
-          <FourSquare color="#1976d2" size="small" text="Loading settings..." textColor="#1976d2" />
+          <Typography>Loading settings...</Typography>
         ) : (
           <Box sx={{ pt: 1 }}>
-            <Typography variant="h6" gutterBottom>
-              Financial Information
+            {success && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                Settings saved successfully!
+              </Alert>
+            )}
+
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+              💰 Financial Information
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Set your monthly income and fixed expenses to get better insights into your spending patterns.
+              Set your monthly income to get better insights into your spending patterns and savings.
             </Typography>
 
             <TextField
@@ -102,45 +108,40 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
               InputProps={{
                 startAdornment: <InputAdornment position="start">₹</InputAdornment>,
               }}
-              sx={{ mb: 2 }}
-            />
-
-            <Divider sx={{ my: 2 }} />
-
-            <TextField
-              fullWidth
-              label="Fixed Monthly Expenses"
-              type="number"
-              value={fixedExpenses}
-              onChange={(e) => setFixedExpenses(e.target.value)}
-              InputProps={{
-                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-              }}
-              placeholder="1000"
-              helperText="Rent, utilities, subscriptions, etc."
               sx={{ mb: 3 }}
-              inputProps={{ min: 0, step: 0.01 }}
+              helperText="Your total monthly income (salary, freelance, etc.)"
             />
 
-            <Box sx={{ mt: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+            <Box sx={{ 
+              mt: 2, 
+              p: 2, 
+              bgcolor: '#f0fdf4', 
+              borderRadius: 2,
+              border: '1px solid #86efac',
+            }}>
               <Typography variant="body2" color="text.secondary">
-                <strong>Note:</strong> These settings help calculate your disposable income and savings percentage. 
-                You can update these values anytime.
+                <strong>💡 Tip:</strong> Fixed expenses (rent, subscriptions, etc.) can be managed directly from the dashboard using the "Fixed Expenses" card. They are automatically included in your monthly calculations.
               </Typography>
             </Box>
           </Box>
         )}
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ p: 2 }}>
         <Button onClick={onClose}>Cancel</Button>
         <Button 
           onClick={handleSave} 
           variant="contained" 
           disabled={saving}
+          sx={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
+            },
+          }}
         >
           {saving ? 'Saving...' : 'Save Settings'}
         </Button>
       </DialogActions>
     </Dialog>
   )
-} 
+}

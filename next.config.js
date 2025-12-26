@@ -1,10 +1,4 @@
 /** @type {import('next').NextConfig} */
-const withPWA = require("next-pwa")({
-  dest: "public",
-  register: true,
-  skipWaiting: true,
-});
-
 const nextConfig = {
   webpack: (config, { isServer }) => {
     if (!isServer) {
@@ -13,18 +7,14 @@ const nextConfig = {
         fs: false,
         net: false,
         tls: false,
-      };
+      }
     }
-    return config;
+    return config
   },
   experimental: {
-    esmExternals: "loose",
+    esmExternals: 'loose'
   },
-  transpilePackages: [
-    "@mui/material",
-    "@mui/icons-material",
-    "@mui/material-nextjs",
-  ],
-};
+  transpilePackages: ['@mui/material', '@mui/icons-material', '@mui/material-nextjs']
+}
 
-module.exports = withPWA(nextConfig);
+module.exports = nextConfig 
