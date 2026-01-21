@@ -163,7 +163,7 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ open, onClos
       }}
     >
       <DialogTitle sx={{
-        fontSize: isMobile ? '1.25rem' : '1.5rem', pb: isMobile ? 1 : 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+        fontSize: isMobile ? '1.25rem' : '1.5rem', pb: isMobile ? 1 : 2, display: 'flex', alignItems: 'flex-starts', justifyContent: 'space-between'
       }}>
         Add New Expense
         <Box><VoiceMic onResult={handleVoiceResult} /></Box>
