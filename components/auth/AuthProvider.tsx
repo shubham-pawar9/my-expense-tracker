@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { User } from '@/types'
+import { SnackbarProvider } from 'notistack'
 
 interface AuthContextType {
   user: User | null
@@ -40,7 +41,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
-      {children}
+      <SnackbarProvider
+        maxSnack={3}
+        autoHideDuration={3000}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {children}
+      </SnackbarProvider>
     </AuthContext.Provider>
   )
 } 

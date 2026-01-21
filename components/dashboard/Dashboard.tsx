@@ -116,8 +116,8 @@ export const Dashboard: React.FC = () => {
     return (
       <>
         {/* View Mode Toggle & Date Picker */}
-        <Box sx={{ 
-          display: 'flex', 
+        <Box sx={{
+          display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
           justifyContent: 'space-between',
           alignItems: isMobile ? 'stretch' : 'center',

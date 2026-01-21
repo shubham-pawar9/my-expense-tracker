@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -22,11 +22,30 @@ import { addDoc, collection } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { format } from 'date-fns'
+import { ParsedExpense } from '../utils/voiceParser'
+import VoiceMic from '../voiceMic/VoiceMic'
+import { useSnackbar } from 'notistack'
 
 interface AddExpenseDialogProps {
   open: boolean
   onClose: () => void
   onExpenseAdded: () => void
+}
+const VOICE_CATEGORY_MAP: Record<string, string> = {
+  food: 'Food & Dining',
+  dining: 'Food & Dining',
+  travel: 'Transportation',
+  transport: 'Transportation',
+  shopping: 'Shopping',
+  movie: 'Entertainment',
+  entertainment: 'Entertainment',
+  medical: 'Healthcare',
+  health: 'Healthcare',
+  rent: 'Rent/Mortgage',
+  education: 'Education',
+  study: 'Education',
+  bill: 'Utilities',
+  insurance: 'Insurance',
 }
 
 const EXPENSE_CATEGORIES = [
@@ -49,12 +68,14 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ open, onClos
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isVoiceInput, setIsVoiceInput] = useState(false)
   const { user } = useAuth()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const { enqueueSnackbar } = useSnackbar()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     if (!amount || !category || !description) {
       setError('Please fill in all required fields')
       return
@@ -72,13 +93,15 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ open, onClos
         date,
         createdAt: new Date(),
       })
-
+      enqueueSnackbar('Expense added 🎉', {
+        variant: 'success',
+      })
       // Reset form
       setAmount('')
       setCategory('')
       setDescription('')
       setDate(format(new Date(), 'yyyy-MM-dd'))
-      
+
       // Close dialog and refresh dashboard
       onClose()
       onExpenseAdded()
@@ -103,11 +126,33 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ open, onClos
     handleClose()
   }
 
+  const handleVoiceResult = (data: ParsedExpense) => {
+
+    setAmount(String(data.amount))
+
+    const mappedCategory =
+      VOICE_CATEGORY_MAP[data.category] || 'Other'
+
+    setCategory(mappedCategory)
+
+    setDescription(`Voice expense: ${data.category}`)
+    setIsVoiceInput(true)
+  }
+  useEffect(() => {
+    if (!isVoiceInput) return
+
+    handleSubmit()
+    setIsVoiceInput(false)
+    return
+
+  }, [isVoiceInput])
+
+
   return (
-    <Dialog 
-      open={open} 
-      onClose={handleClose} 
-      maxWidth="sm" 
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="sm"
       fullWidth
       fullScreen={isMobile}
       sx={{
@@ -117,8 +162,11 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ open, onClos
         }
       }}
     >
-      <DialogTitle sx={{ fontSize: isMobile ? '1.25rem' : '1.5rem', pb: isMobile ? 1 : 2 }}>
+      <DialogTitle sx={{
+        fontSize: isMobile ? '1.25rem' : '1.5rem', pb: isMobile ? 1 : 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+      }}>
         Add New Expense
+        <Box><VoiceMic onResult={handleVoiceResult} /></Box>
       </DialogTitle>
       <Box component="form" onSubmit={handleSubmit}>
         <DialogContent sx={{ pb: isMobile ? 2 : 3 }}>
@@ -127,7 +175,7 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ open, onClos
               {error}
             </Alert>
           )}
-          
+
           <TextField
             autoFocus
             margin="dense"
@@ -182,13 +230,17 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ open, onClos
           <Button onClick={handleCancel} size={isMobile ? 'large' : 'medium'}>
             Cancel
           </Button>
-          <Button 
-            type="submit" 
-            variant="contained" 
+          <Button
+            type="submit"
+            variant="contained"
             disabled={loading}
             size={isMobile ? 'large' : 'medium'}
           >
-            {loading ? 'Adding...' : 'Add Expense'}
+            {isVoiceInput
+              ? `Add Expense`
+              : loading
+                ? 'Adding...'
+                : 'Add Expense'}
           </Button>
         </DialogActions>
       </Box>
