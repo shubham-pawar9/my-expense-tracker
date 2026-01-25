@@ -7,6 +7,7 @@ import { SignupForm } from '@/components/auth/SignupForm'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import SplashScreen from '@/components/splashScreen/SplashScreen'
 
 export default function Home() {
   const [isLogin, setIsLogin] = useState(true)
@@ -23,7 +24,7 @@ export default function Home() {
     return (
       <Container>
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-          <Typography>Loading...</Typography>
+          <SplashScreen />
         </Box>
       </Container>
     )

@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import { ThemeRegistry } from '@/components/ThemeRegistry'
+import QuickWidget from '@/components/quickWidget/QuickWidget'
+import PwaBootstrap from '@/components/pwa/PwaBootstrap'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -23,6 +25,8 @@ export default function RootLayout({
         <ThemeRegistry>
           <AuthProvider>
             {children}
+            <QuickWidget />
+            <PwaBootstrap />
           </AuthProvider>
         </ThemeRegistry>
       </body>

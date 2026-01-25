@@ -17,6 +17,7 @@
     "@mui/material-nextjs": "^7.1.1",
     "date-fns": "^2.30.0",
     "firebase": "^9.23.0",
+    "lottie-react": "^2.4.1",
     "next": "14.0.4",
     "notistack": "^3.0.2",
     "react": "^18",
