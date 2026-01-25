@@ -7,23 +7,29 @@ export async function requestNotificationPermission() {
     await Notification.requestPermission()
 }
 
-export function startWaterReminder(reminder: any) {
-    stopWaterReminder()
 
+export function startWaterReminder(reminder: any, testMode = false) {
+    stopWaterReminder()
     if (!reminder.enabled) return
     if (Notification.permission !== 'granted') return
 
-    const intervalMs = 10000
+    const intervalMs = testMode ? 10000 : reminder.interval * 60 * 1000
 
     reminderTimer = setInterval(() => {
         if (!isWithinTime(reminder.startTime, reminder.endTime)) return
+
+        // Play sound if app is visible
+        if (document.visibilityState === 'visible') {
+            const audio = new Audio('/sounds/water-reminder.mp3')
+            audio.play().catch(() => { })
+        }
 
         navigator.serviceWorker.ready.then((reg) => {
             reg.showNotification('💧 Drink Water', {
                 body: 'Time to hydrate yourself',
                 icon: '/icons/icon-192.png',
-                tag: 'water-reminder',
-                renotify: true, // works in browser
+                tag: 'water-reminder-' + Date.now(), // unique
+                renotify: true,
             } as NotificationOptions)
         })
     }, intervalMs)
@@ -35,6 +41,7 @@ export function stopWaterReminder() {
         reminderTimer = null
     }
 }
+
 
 function isWithinTime(start: string, end: string) {
     const now = new Date()

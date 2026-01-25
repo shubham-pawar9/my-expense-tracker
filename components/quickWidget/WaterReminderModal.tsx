@@ -38,7 +38,11 @@ export default function WaterReminderModal({
             endTime,
         }
 
-        localStorage.setItem('waterReminder', JSON.stringify(reminder))
+        // When saving reminder
+        localStorage.setItem('waterReminder', JSON.stringify({
+            ...reminder,
+            enabled: true
+        }))
 
         if (enabled) {
             await requestNotificationPermission()
