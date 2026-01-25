@@ -20,8 +20,11 @@ export function startWaterReminder(reminder: any, testMode = false) {
 
         // Play sound if app is visible
         if (document.visibilityState === 'visible') {
-            const audio = new Audio('/sounds/water-reminder.mp3')
-            audio.play().catch(() => { })
+            const audio = new Audio('/audio/notification.mp3')
+            audio.volume = 0.5   // optional
+            audio.play().catch((err) => {
+                console.warn('Audio play blocked, needs user interaction', err)
+            })
         }
 
         navigator.serviceWorker.ready.then((reg) => {

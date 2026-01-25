@@ -62,11 +62,37 @@ export default function WaterReminderModal({
                         control={
                             <Switch
                                 checked={enabled}
-                                onChange={(e) => setEnabled(e.target.checked)}
+                                onChange={async (e) => {
+                                    const isChecked = e.target.checked
+                                    setEnabled(isChecked)
+
+                                    // 🔑 Unlock notifications & audio immediately on first enable
+                                    if (isChecked) {
+                                        // Request permission
+                                        await requestNotificationPermission()
+
+                                        // Play a tiny silent audio to unlock autoplay
+                                        const audio = new Audio('/audio/notification.mp3')
+                                        audio.play().catch(() => { })
+
+                                        // Load saved reminder if exists
+                                        const saved = localStorage.getItem('waterReminder')
+                                        if (saved) {
+                                            const reminder = JSON.parse(saved)
+                                            if (reminder.enabled) {
+                                                startWaterReminder(reminder)
+                                            }
+                                        }
+                                    } else {
+                                        // Stop reminder if user disables
+                                        startWaterReminder({ enabled: false })
+                                    }
+                                }}
                             />
                         }
                         label="Enable Reminder"
                     />
+
 
                     <FormControl fullWidth disabled={!enabled}>
                         <InputLabel>Interval</InputLabel>
