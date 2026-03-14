@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { startWaterReminder } from '../utils/waterReminder'
+// import { startWaterReminder } from '../utils/waterReminder'
 
 export default function PwaBootstrap() {
     useEffect(() => {
@@ -11,13 +11,13 @@ export default function PwaBootstrap() {
         }
 
         // Restore water reminder
-        const saved = localStorage.getItem('waterReminder')
-        if (saved) {
-            const reminder = JSON.parse(saved)
-            if (reminder.enabled) {
-                startWaterReminder(reminder)
-            }
-        }
+        // const saved = localStorage.getItem('waterReminder')
+        // if (saved) {
+        //     const reminder = JSON.parse(saved)
+        //     if (reminder.enabled) {
+        //         startWaterReminder(reminder)
+        //     }
+        // }
     }, [])
 
     return null

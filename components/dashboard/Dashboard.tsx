@@ -47,6 +47,7 @@ import { MonthYearPicker } from '@/components/dashboard/MonthYearPicker'
 import { YearlyChart } from '@/components/dashboard/YearlyChart'
 import { FixedExpensesCard } from '@/components/dashboard/FixedExpensesCard'
 import { DateSelection } from '@/types'
+import { ensureDailyVendorEntries } from '@/lib/dailyVendors'
 
 type ViewMode = 'monthly' | 'yearly'
 
@@ -65,6 +66,15 @@ export const Dashboard: React.FC = () => {
   const router = useRouter()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+
+
+  useEffect(() => {
+    if (!user) return
+
+    ensureDailyVendorEntries(user.uid).catch((error) => {
+      console.error('Failed to generate daily vendor entries:', error)
+    })
+  }, [user])
 
   const handleLogout = async () => {
     try {
