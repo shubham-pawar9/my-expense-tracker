@@ -32,6 +32,7 @@ import {
 } from '@mui/material'
 import { CalendarMonth, Download, Share, ArrowBack } from '@mui/icons-material'
 import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore'
+import { getAuth } from 'firebase/auth'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { DailyVendor, VendorDailyEntry, VendorType } from '@/types'
@@ -131,68 +132,103 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
   const loadVendorsAndEntries = async () => {
     if (!user) return
 
-    const vendorSnap = await getDocs(
-      query(collection(db, 'dailyVendors'), where('userId', '==', user.uid)),
-    )
-    const vendorList = vendorSnap.docs.map((vendorDoc) => ({
-      ...(vendorDoc.data() as DailyVendor),
-      userId: user.uid,
-      id: vendorDoc.id,
-    }))
+    const auth = getAuth()
+    const authUser = auth.currentUser
+    console.log('Firebase Auth User:', authUser)
+    console.log('User UID:', authUser?.uid)
 
-    setVendors(vendorList)
+    if (!authUser?.uid) {
+      setError('Please sign in again to load vendors.')
+      return
+    }
 
-    const entrySnap = await getDocs(
-      query(collection(db, 'vendorDailyEntries'), where('userId', '==', user.uid)),
-    )
+    if (authUser.uid !== user.uid) {
+      console.warn('Auth context UID and Firebase currentUser UID mismatch.', {
+        contextUid: user.uid,
+        authUid: authUser.uid,
+      })
+    }
 
-    const entryList = entrySnap.docs.map((entryDoc) => {
-      const entryData = entryDoc.data() as VendorDailyEntry & { vendorDocId?: string }
-      const resolvedVendorName = entryData.vendorName || entryData.vendorDocId || ''
+    try {
+      const vendorsQuery = query(
+        collection(db, 'dailyVendors'),
+        where('userId', '==', authUser.uid),
+      )
 
-      let resolvedVendorId = entryData.vendorId
-      if (!vendorList.some((vendor) => vendor.id === resolvedVendorId) && resolvedVendorName) {
-        resolvedVendorId = vendorList.find((vendor) => vendor.vendorName === resolvedVendorName)?.id || resolvedVendorId
-      }
+      const vendorSnap = await getDocs(vendorsQuery)
+      console.log('Vendors fetched:', vendorSnap.size)
 
-      return {
-        ...entryData,
-        userId: user.uid,
-        vendorName: resolvedVendorName,
-        vendorId: resolvedVendorId,
-        id: entryDoc.id,
-      }
-    })
+      const vendorList = vendorSnap.docs.map((vendorDoc) => {
+        const vendorData = vendorDoc.data() as DailyVendor
 
-    await Promise.all(
-      entrySnap.docs.map((entryDoc) => {
+        console.log('Vendor Doc ID:', vendorDoc.id)
+        console.log('Vendor UserId:', vendorData.userId)
+        console.log('Current Auth UID:', auth.currentUser?.uid)
+
+        return {
+          ...vendorData,
+          userId: authUser.uid,
+          id: vendorDoc.id,
+        }
+      })
+
+      setVendors(vendorList)
+
+      const entrySnap = await getDocs(
+        query(collection(db, 'vendorDailyEntries'), where('userId', '==', authUser.uid)),
+      )
+
+      const entryList = entrySnap.docs.map((entryDoc) => {
         const entryData = entryDoc.data() as VendorDailyEntry & { vendorDocId?: string }
-        const matchedEntry = entryList.find((entry) => entry.id === entryDoc.id)
+        const resolvedVendorName = entryData.vendorName || entryData.vendorDocId || ''
 
-        if (!matchedEntry) return Promise.resolve()
-
-        const shouldMigrateVendorName = !entryData.vendorName && Boolean(matchedEntry.vendorName)
-        const shouldMigrateVendorId = entryData.vendorId !== matchedEntry.vendorId
-
-        if (!shouldMigrateVendorName && !shouldMigrateVendorId) {
-          return Promise.resolve()
+        let resolvedVendorId = entryData.vendorId
+        if (!vendorList.some((vendor) => vendor.id === resolvedVendorId) && resolvedVendorName) {
+          resolvedVendorId = vendorList.find((vendor) => vendor.vendorName === resolvedVendorName)?.id || resolvedVendorId
         }
 
-        return setDoc(
-          doc(db, 'vendorDailyEntries', entryDoc.id),
-          {
-            vendorName: matchedEntry.vendorName,
-            vendorId: matchedEntry.vendorId,
-          },
-          { merge: true },
-        )
-      }),
-    )
+        return {
+          ...entryData,
+          userId: authUser.uid,
+          vendorName: resolvedVendorName,
+          vendorId: resolvedVendorId,
+          id: entryDoc.id,
+        }
+      })
 
-    setEntries(entryList)
+      await Promise.all(
+        entrySnap.docs.map((entryDoc) => {
+          const entryData = entryDoc.data() as VendorDailyEntry & { vendorDocId?: string }
+          const matchedEntry = entryList.find((entry) => entry.id === entryDoc.id)
 
-    if (!selectedVendorId && vendorList.length > 0) {
-      setSelectedVendorId(vendorList[0].id)
+          if (!matchedEntry) return Promise.resolve()
+
+          const shouldMigrateVendorName = !entryData.vendorName && Boolean(matchedEntry.vendorName)
+          const shouldMigrateVendorId = entryData.vendorId !== matchedEntry.vendorId
+
+          if (!shouldMigrateVendorName && !shouldMigrateVendorId) {
+            return Promise.resolve()
+          }
+
+          return setDoc(
+            doc(db, 'vendorDailyEntries', entryDoc.id),
+            {
+              vendorName: matchedEntry.vendorName,
+              vendorId: matchedEntry.vendorId,
+            },
+            { merge: true },
+          )
+        }),
+      )
+
+      setEntries(entryList)
+
+      if (!selectedVendorId && vendorList.length > 0) {
+        setSelectedVendorId(vendorList[0].id)
+      }
+    } catch (error) {
+      console.error('Vendor fetch error:', error)
+      setError('Failed to load vendors. Please check authentication and Firestore rules.')
     }
   }
 
@@ -236,9 +272,20 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
   const saveVendor = async () => {
     if (!user || !vendorName || !startDate) return
 
+    const auth = getAuth()
+    const authUser = auth.currentUser
+
+    console.log('Firebase Auth User:', authUser)
+    console.log('User UID:', authUser?.uid)
+
+    if (!authUser?.uid) {
+      setError('Please sign in again before adding a vendor.')
+      return
+    }
+
     const vendorRef = doc(collection(db, 'dailyVendors'))
     const payload: Partial<DailyVendor> = {
-      userId: user.uid,
+      userId: authUser.uid,
       vendorName,
       vendorType,
       phoneNumber: phoneNumber || undefined,
@@ -259,12 +306,17 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
       payload.pricePerDay = parseFloat(pricePerDay) || 0
     }
 
-    await setDoc(vendorRef, payload)
-    await ensureDailyVendorEntries(user.uid)
-    await loadVendorsAndEntries()
-    setSuccess('Vendor added and daily entries generated.')
-    resetVendorForm()
-    setVendorView('list')
+    try {
+      await setDoc(vendorRef, payload)
+      await ensureDailyVendorEntries(authUser.uid)
+      await loadVendorsAndEntries()
+      setSuccess('Vendor added and daily entries generated.')
+      resetVendorForm()
+      setVendorView('list')
+    } catch (error) {
+      console.error('Vendor fetch error:', error)
+      setError('Failed to save vendor. Please verify Firestore rules and userId mapping.')
+    }
   }
 
   const getCalendarColor = (day: Date) => {
