@@ -28,15 +28,19 @@ import {
   TextField,
   Typography,
   Checkbox,
+  CircularProgress,
+  IconButton,
+  useMediaQuery,
   Dialog as MuiDialog,
 } from '@mui/material'
-import { CalendarMonth, Download, Share, ArrowBack } from '@mui/icons-material'
+import { Download, Share, ArrowBack, ChevronLeft, ChevronRight } from '@mui/icons-material'
 import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { DailyVendor, VendorDailyEntry, VendorType } from '@/types'
 import {
+  addMonths,
   eachDayOfInterval,
   endOfMonth,
   format,
@@ -44,6 +48,7 @@ import {
   isBefore,
   parseISO,
   startOfMonth,
+  subMonths,
 } from 'date-fns'
 import { ensureDailyVendorEntries } from '@/lib/dailyVendors'
 
@@ -86,8 +91,10 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
   const [pricePerDay, setPricePerDay] = useState('')
 
   const [billMonth, setBillMonth] = useState(format(new Date(), 'yyyy-MM'))
+  const [savingVendor, setSavingVendor] = useState(false)
 
   const { user } = useAuth()
+  const isMobile = useMediaQuery('(max-width:600px)')
 
   const selectedVendor = useMemo(
     () => vendors.find((vendor) => vendor.id === selectedVendorId) || null,
@@ -270,7 +277,7 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
   }
 
   const saveVendor = async () => {
-    if (!user || !vendorName || !startDate) return
+    if (!user || !vendorName || !startDate || savingVendor) return
 
     const auth = getAuth()
     const authUser = auth.currentUser
@@ -308,6 +315,7 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
     }
 
     try {
+      setSavingVendor(true)
       await setDoc(vendorRef, payload)
       await ensureDailyVendorEntries(authUser.uid)
       await loadVendorsAndEntries()
@@ -317,6 +325,8 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
     } catch (error) {
       console.error('Vendor fetch error:', error)
       setError('Failed to save vendor. Please verify Firestore rules and userId mapping.')
+    } finally {
+      setSavingVendor(false)
     }
   }
 
@@ -582,7 +592,14 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
                       )}
 
                       <Grid item xs={12}>
-                        <Button variant="contained" onClick={saveVendor}>Save Vendor</Button>
+                        <Button
+                          variant="contained"
+                          onClick={saveVendor}
+                          disabled={savingVendor || !vendorName.trim() || !startDate}
+                          startIcon={savingVendor ? <CircularProgress size={18} color="inherit" /> : undefined}
+                        >
+                          {savingVendor ? 'Saving...' : 'Save Vendor'}
+                        </Button>
                       </Grid>
                     </Grid>
                   </Paper>
@@ -608,21 +625,51 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
 
                 {vendorView === 'detail' && selectedVendor && (
                   <Paper sx={{ p: 2 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                    <Stack
+                      direction={isMobile ? 'column' : 'row'}
+                      justifyContent="space-between"
+                      alignItems={isMobile ? 'stretch' : 'center'}
+                      spacing={1.5}
+                      sx={{ mb: 2 }}
+                    >
                       <Typography variant="h6">{selectedVendor.vendorName} Calendar</Typography>
-                      <TextField
-                        type="month"
-                        value={billMonth}
-                        onChange={(e) => setBillMonth(e.target.value)}
-                        size="small"
-                      />
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent={isMobile ? 'space-between' : 'flex-end'}
+                        spacing={1}
+                        sx={{
+                          width: isMobile ? '100%' : 'auto',
+                          p: isMobile ? 0.75 : 0.5,
+                          borderRadius: 2,
+                          bgcolor: 'action.hover',
+                        }}
+                      >
+                        <IconButton
+                          size="small"
+                          onClick={() => setBillMonth(format(subMonths(monthDate, 1), 'yyyy-MM'))}
+                          aria-label="Previous month"
+                        >
+                          <ChevronLeft fontSize="small" />
+                        </IconButton>
+                        <Typography variant="subtitle2" sx={{ minWidth: isMobile ? 130 : 140, textAlign: 'center' }}>
+                          {format(monthDate, 'MMMM yyyy')}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={() => setBillMonth(format(addMonths(monthDate, 1), 'yyyy-MM'))}
+                          aria-label="Next month"
+                        >
+                          <ChevronRight fontSize="small" />
+                        </IconButton>
+                      </Stack>
                     </Stack>
 
                     <Box
                       sx={{
                         display: 'grid',
                         gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-                        gap: 1,
+                        gap: isMobile ? 0.5 : 1,
                       }}
                     >
                       {calendarDays.map((day) => (
@@ -631,7 +678,10 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
                           fullWidth
                           onClick={() => openEntryEditor(day)}
                           sx={{
-                            minHeight: 44,
+                            minHeight: isMobile ? 38 : 44,
+                            minWidth: 0,
+                            px: isMobile ? 0 : 1,
+                            fontSize: isMobile ? '0.75rem' : '0.875rem',
                             bgcolor: getCalendarColor(day),
                             color: '#111827',
                             fontWeight: 700,
@@ -642,7 +692,7 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
                       ))}
                     </Box>
 
-                    <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                    <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: 'wrap', rowGap: 1 }}>
                       <Chip label="Delivered" sx={{ bgcolor: '#22c55e', color: 'white' }} />
                       <Chip label="Not Delivered" sx={{ bgcolor: '#ef4444', color: 'white' }} />
                       <Chip label="Not yet" sx={{ bgcolor: '#d1d5db' }} />
@@ -658,7 +708,7 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
                     <Typography variant="body2">Price: ₹{selectedVendor.vendorType === 'Milk' ? selectedVendor.pricePerLiter || 0 : selectedVendor.pricePerDay || 0}</Typography>
                     <Typography variant="subtitle1" sx={{ mt: 1, fontWeight: 700 }}>Total: ₹{monthlyTotal.toFixed(2)}</Typography>
 
-                    <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                    <Stack direction={isMobile ? 'column' : 'row'} spacing={1.5} sx={{ mt: 2 }}>
                       <Button startIcon={<Download />} variant="contained" onClick={downloadBill}>Download Bill</Button>
                       <Button startIcon={<Share />} variant="outlined" onClick={shareBill}>Share Bill</Button>
                     </Stack>
