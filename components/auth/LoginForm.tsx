@@ -10,9 +10,11 @@ import {
   Alert,
   Link,
   Container,
+  Divider,
 } from '@mui/material'
-import { signInWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { Google as GoogleIcon } from '@mui/icons-material'
+import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth'
+import { auth, googleProvider } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 
 interface LoginFormProps {
@@ -24,6 +26,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,6 +41,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
       setError(error.message || 'Failed to login')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setError('')
+    setGoogleLoading(true)
+
+    try {
+      await signInWithPopup(auth, googleProvider)
+      router.push('/dashboard')
+    } catch (error: any) {
+      setError(error.message || 'Failed to sign in with Google')
+    } finally {
+      setGoogleLoading(false)
     }
   }
 
@@ -74,6 +91,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
             </Alert>
           )}
 
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<GoogleIcon />}
+            sx={{ mb: 2 }}
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading || loading}
+          >
+            {googleLoading ? 'Signing In with Google...' : 'Continue with Google'}
+          </Button>
+
+          <Divider sx={{ width: '100%', mb: 1 }}>OR</Divider>
+
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             <TextField
               margin="normal"
@@ -104,7 +134,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
               fullWidth
               variant="contained"
               sx={{ mt: 3, mb: 2 }}
-              disabled={loading}
+              disabled={loading || googleLoading}
             >
               {loading ? 'Signing In...' : 'Sign In'}
             </Button>
@@ -123,4 +153,4 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
       </Box>
     </Container>
   )
-} 
+}
