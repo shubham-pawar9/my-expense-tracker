@@ -40,29 +40,62 @@ const getVendorQuantity = (vendor: DailyVendor) => {
 export const ensureDailyVendorEntries = async (userId: string, targetDate: Date = new Date()) => {
   const date = format(targetDate, 'yyyy-MM-dd')
 
-  const vendorsSnapshot = await getDocs(
+  const userVendorsSnapshot = await getDocs(
     query(
       collection(db, 'dailyVendors'),
-      where('userId', 'in', [userId, LEGACY_USER_ID]),
+      where('userId', '==', userId),
       where('isActive', '==', true),
     ),
   )
 
-  const activeVendors = vendorsSnapshot.docs.map((vendorDoc) => {
-    const data = vendorDoc.data() as DailyVendor
+  const userVendors = userVendorsSnapshot.docs.map((vendorDoc) => ({
+    ...(vendorDoc.data() as DailyVendor),
+    id: vendorDoc.id,
+    userId,
+  }))
 
-    if (data.userId === LEGACY_USER_ID) {
-      setDoc(doc(db, 'dailyVendors', vendorDoc.id), { userId }, { merge: true }).catch((error) => {
-        console.error('Failed to migrate vendor userId:', error)
-      })
-    }
+  const legacyVendorsSnapshot = await getDocs(
+    query(
+      collection(db, 'dailyVendors'),
+      where('userId', '==', LEGACY_USER_ID),
+      where('isActive', '==', true),
+    ),
+  )
 
-    return {
-      ...data,
-      userId,
-      id: vendorDoc.id,
-    }
-  })
+  const createdVendors = await Promise.all(
+    legacyVendorsSnapshot.docs
+      .map((vendorDoc) => vendorDoc.data() as DailyVendor)
+      .filter(
+        (legacyVendor) =>
+          !userVendors.some(
+            (userVendor) =>
+              userVendor.vendorName === legacyVendor.vendorName &&
+              userVendor.vendorType === legacyVendor.vendorType &&
+              userVendor.startDate === legacyVendor.startDate,
+          ),
+      )
+      .map(async (legacyVendor) => {
+        const userVendorRef = doc(collection(db, 'dailyVendors'))
+        const userVendor: DailyVendor = {
+          ...legacyVendor,
+          userId,
+          updatedAt: new Date(),
+          createdAt: new Date(),
+        }
+
+        await setDoc(userVendorRef, userVendor)
+
+        return {
+          ...userVendor,
+          id: userVendorRef.id,
+        }
+      }),
+  )
+
+  const activeVendors = [...userVendors, ...createdVendors].map((vendor) => ({
+    ...vendor,
+    userId,
+  }))
 
   for (const vendor of activeVendors) {
     if (isAfter(parseISO(vendor.startDate), parseISO(date))) {

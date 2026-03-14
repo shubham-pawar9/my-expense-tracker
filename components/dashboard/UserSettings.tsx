@@ -55,7 +55,6 @@ type SettingsTab = 'general' | 'daily-vendors'
 type VendorView = 'list' | 'add' | 'history' | 'detail'
 
 const VENDOR_TYPES: VendorType[] = ['Milk', 'Newspaper', 'Maid']
-const LEGACY_USER_ID = 'USER_ID'
 
 export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => {
   const [tab, setTab] = useState<SettingsTab>('general')
@@ -133,7 +132,7 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
     if (!user) return
 
     const vendorSnap = await getDocs(
-      query(collection(db, 'dailyVendors'), where('userId', 'in', [user.uid, LEGACY_USER_ID])),
+      query(collection(db, 'dailyVendors'), where('userId', '==', user.uid)),
     )
     const vendorList = vendorSnap.docs.map((vendorDoc) => ({
       ...(vendorDoc.data() as DailyVendor),
@@ -141,16 +140,10 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
       id: vendorDoc.id,
     }))
 
-    await Promise.all(
-      vendorSnap.docs
-        .filter((vendorDoc) => (vendorDoc.data() as DailyVendor).userId === LEGACY_USER_ID)
-        .map((vendorDoc) => setDoc(doc(db, 'dailyVendors', vendorDoc.id), { userId: user.uid }, { merge: true })),
-    )
-
     setVendors(vendorList)
 
     const entrySnap = await getDocs(
-      query(collection(db, 'vendorDailyEntries'), where('userId', 'in', [user.uid, LEGACY_USER_ID])),
+      query(collection(db, 'vendorDailyEntries'), where('userId', '==', user.uid)),
     )
 
     const entryList = entrySnap.docs.map((entryDoc) => {
@@ -178,18 +171,16 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
 
         if (!matchedEntry) return Promise.resolve()
 
-        const shouldMigrateUser = entryData.userId === LEGACY_USER_ID
         const shouldMigrateVendorName = !entryData.vendorName && Boolean(matchedEntry.vendorName)
         const shouldMigrateVendorId = entryData.vendorId !== matchedEntry.vendorId
 
-        if (!shouldMigrateUser && !shouldMigrateVendorName && !shouldMigrateVendorId) {
+        if (!shouldMigrateVendorName && !shouldMigrateVendorId) {
           return Promise.resolve()
         }
 
         return setDoc(
           doc(db, 'vendorDailyEntries', entryDoc.id),
           {
-            userId: user.uid,
             vendorName: matchedEntry.vendorName,
             vendorId: matchedEntry.vendorId,
           },
