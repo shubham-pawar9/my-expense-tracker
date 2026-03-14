@@ -13,6 +13,7 @@ import { format, isAfter, parseISO } from 'date-fns'
 
 const DAILY_SUPPLY_CATEGORY = 'Daily Supply'
 const DAILY_ENTRY_STATUS = 'Delivered'
+const LEGACY_USER_ID = 'USER_ID'
 
 const getVendorAmount = (vendor: DailyVendor) => {
   if (vendor.vendorType === 'Milk') {
@@ -40,13 +41,25 @@ export const ensureDailyVendorEntries = async (userId: string, targetDate: Date 
   const date = format(targetDate, 'yyyy-MM-dd')
 
   const vendorsSnapshot = await getDocs(
-    query(collection(db, 'dailyVendors'), where('userId', '==', userId), where('isActive', '==', true)),
+    query(
+      collection(db, 'dailyVendors'),
+      where('userId', 'in', [userId, LEGACY_USER_ID]),
+      where('isActive', '==', true),
+    ),
   )
 
   const activeVendors = vendorsSnapshot.docs.map((vendorDoc) => {
     const data = vendorDoc.data() as DailyVendor
+
+    if (data.userId === LEGACY_USER_ID) {
+      setDoc(doc(db, 'dailyVendors', vendorDoc.id), { userId }, { merge: true }).catch((error) => {
+        console.error('Failed to migrate vendor userId:', error)
+      })
+    }
+
     return {
       ...data,
+      userId,
       id: vendorDoc.id,
     }
   })

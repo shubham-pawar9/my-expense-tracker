@@ -55,6 +55,7 @@ type SettingsTab = 'general' | 'daily-vendors'
 type VendorView = 'list' | 'add' | 'history' | 'detail'
 
 const VENDOR_TYPES: VendorType[] = ['Milk', 'Newspaper', 'Maid']
+const LEGACY_USER_ID = 'USER_ID'
 
 export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => {
   const [tab, setTab] = useState<SettingsTab>('general')
@@ -131,18 +132,72 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
   const loadVendorsAndEntries = async () => {
     if (!user) return
 
-    const vendorSnap = await getDocs(query(collection(db, 'dailyVendors'), where('userId', '==', user.uid)))
+    const vendorSnap = await getDocs(
+      query(collection(db, 'dailyVendors'), where('userId', 'in', [user.uid, LEGACY_USER_ID])),
+    )
     const vendorList = vendorSnap.docs.map((vendorDoc) => ({
       ...(vendorDoc.data() as DailyVendor),
+      userId: user.uid,
       id: vendorDoc.id,
     }))
+
+    await Promise.all(
+      vendorSnap.docs
+        .filter((vendorDoc) => (vendorDoc.data() as DailyVendor).userId === LEGACY_USER_ID)
+        .map((vendorDoc) => setDoc(doc(db, 'dailyVendors', vendorDoc.id), { userId: user.uid }, { merge: true })),
+    )
+
     setVendors(vendorList)
 
-    const entrySnap = await getDocs(query(collection(db, 'vendorDailyEntries'), where('userId', '==', user.uid)))
-    const entryList = entrySnap.docs.map((entryDoc) => ({
-      ...(entryDoc.data() as VendorDailyEntry),
-      id: entryDoc.id,
-    }))
+    const entrySnap = await getDocs(
+      query(collection(db, 'vendorDailyEntries'), where('userId', 'in', [user.uid, LEGACY_USER_ID])),
+    )
+
+    const entryList = entrySnap.docs.map((entryDoc) => {
+      const entryData = entryDoc.data() as VendorDailyEntry & { vendorDocId?: string }
+      const resolvedVendorName = entryData.vendorName || entryData.vendorDocId || ''
+
+      let resolvedVendorId = entryData.vendorId
+      if (!vendorList.some((vendor) => vendor.id === resolvedVendorId) && resolvedVendorName) {
+        resolvedVendorId = vendorList.find((vendor) => vendor.vendorName === resolvedVendorName)?.id || resolvedVendorId
+      }
+
+      return {
+        ...entryData,
+        userId: user.uid,
+        vendorName: resolvedVendorName,
+        vendorId: resolvedVendorId,
+        id: entryDoc.id,
+      }
+    })
+
+    await Promise.all(
+      entrySnap.docs.map((entryDoc) => {
+        const entryData = entryDoc.data() as VendorDailyEntry & { vendorDocId?: string }
+        const matchedEntry = entryList.find((entry) => entry.id === entryDoc.id)
+
+        if (!matchedEntry) return Promise.resolve()
+
+        const shouldMigrateUser = entryData.userId === LEGACY_USER_ID
+        const shouldMigrateVendorName = !entryData.vendorName && Boolean(matchedEntry.vendorName)
+        const shouldMigrateVendorId = entryData.vendorId !== matchedEntry.vendorId
+
+        if (!shouldMigrateUser && !shouldMigrateVendorName && !shouldMigrateVendorId) {
+          return Promise.resolve()
+        }
+
+        return setDoc(
+          doc(db, 'vendorDailyEntries', entryDoc.id),
+          {
+            userId: user.uid,
+            vendorName: matchedEntry.vendorName,
+            vendorId: matchedEntry.vendorId,
+          },
+          { merge: true },
+        )
+      }),
+    )
+
     setEntries(entryList)
 
     if (!selectedVendorId && vendorList.length > 0) {
