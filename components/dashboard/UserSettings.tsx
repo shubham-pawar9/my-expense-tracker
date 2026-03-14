@@ -288,13 +288,14 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
       userId: authUser.uid,
       vendorName,
       vendorType,
-      phoneNumber: phoneNumber || undefined,
       startDate,
-      deliveryTime: deliveryTime || undefined,
       isActive: true,
       updatedAt: new Date(),
       createdAt: new Date(),
     }
+
+    if (phoneNumber) payload.phoneNumber = phoneNumber
+    if (deliveryTime) payload.deliveryTime = deliveryTime
 
     if (vendorType === 'Milk') {
       payload.pricePerLiter = parseFloat(pricePerLiter) || 0
