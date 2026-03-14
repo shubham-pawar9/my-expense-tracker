@@ -10,9 +10,11 @@ import {
   Alert,
   Link,
   Container,
+  Divider,
 } from '@mui/material'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { Google as GoogleIcon } from '@mui/icons-material'
+import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth'
+import { auth, googleProvider } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 
 interface SignupFormProps {
@@ -25,6 +27,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,6 +53,20 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
       setError(error.message || 'Failed to create account')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGoogleSignup = async () => {
+    setError('')
+    setGoogleLoading(true)
+
+    try {
+      await signInWithPopup(auth, googleProvider)
+      router.push('/dashboard')
+    } catch (error: any) {
+      setError(error.message || 'Failed to sign up with Google')
+    } finally {
+      setGoogleLoading(false)
     }
   }
 
@@ -85,6 +102,19 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
               {error}
             </Alert>
           )}
+
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<GoogleIcon />}
+            sx={{ mb: 2 }}
+            onClick={handleGoogleSignup}
+            disabled={googleLoading || loading}
+          >
+            {googleLoading ? 'Signing Up with Google...' : 'Continue with Google'}
+          </Button>
+
+          <Divider sx={{ width: '100%', mb: 1 }}>OR</Divider>
 
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             <TextField
@@ -128,7 +158,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
               fullWidth
               variant="contained"
               sx={{ mt: 3, mb: 2 }}
-              disabled={loading}
+              disabled={loading || googleLoading}
             >
               {loading ? 'Creating Account...' : 'Sign Up'}
             </Button>
@@ -147,4 +177,4 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
       </Box>
     </Container>
   )
-} 
+}
