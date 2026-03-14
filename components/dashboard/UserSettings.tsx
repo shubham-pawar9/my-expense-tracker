@@ -131,18 +131,64 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
   const loadVendorsAndEntries = async () => {
     if (!user) return
 
-    const vendorSnap = await getDocs(query(collection(db, 'dailyVendors'), where('userId', '==', user.uid)))
+    const vendorSnap = await getDocs(
+      query(collection(db, 'dailyVendors'), where('userId', '==', user.uid)),
+    )
     const vendorList = vendorSnap.docs.map((vendorDoc) => ({
       ...(vendorDoc.data() as DailyVendor),
+      userId: user.uid,
       id: vendorDoc.id,
     }))
+
     setVendors(vendorList)
 
-    const entrySnap = await getDocs(query(collection(db, 'vendorDailyEntries'), where('userId', '==', user.uid)))
-    const entryList = entrySnap.docs.map((entryDoc) => ({
-      ...(entryDoc.data() as VendorDailyEntry),
-      id: entryDoc.id,
-    }))
+    const entrySnap = await getDocs(
+      query(collection(db, 'vendorDailyEntries'), where('userId', '==', user.uid)),
+    )
+
+    const entryList = entrySnap.docs.map((entryDoc) => {
+      const entryData = entryDoc.data() as VendorDailyEntry & { vendorDocId?: string }
+      const resolvedVendorName = entryData.vendorName || entryData.vendorDocId || ''
+
+      let resolvedVendorId = entryData.vendorId
+      if (!vendorList.some((vendor) => vendor.id === resolvedVendorId) && resolvedVendorName) {
+        resolvedVendorId = vendorList.find((vendor) => vendor.vendorName === resolvedVendorName)?.id || resolvedVendorId
+      }
+
+      return {
+        ...entryData,
+        userId: user.uid,
+        vendorName: resolvedVendorName,
+        vendorId: resolvedVendorId,
+        id: entryDoc.id,
+      }
+    })
+
+    await Promise.all(
+      entrySnap.docs.map((entryDoc) => {
+        const entryData = entryDoc.data() as VendorDailyEntry & { vendorDocId?: string }
+        const matchedEntry = entryList.find((entry) => entry.id === entryDoc.id)
+
+        if (!matchedEntry) return Promise.resolve()
+
+        const shouldMigrateVendorName = !entryData.vendorName && Boolean(matchedEntry.vendorName)
+        const shouldMigrateVendorId = entryData.vendorId !== matchedEntry.vendorId
+
+        if (!shouldMigrateVendorName && !shouldMigrateVendorId) {
+          return Promise.resolve()
+        }
+
+        return setDoc(
+          doc(db, 'vendorDailyEntries', entryDoc.id),
+          {
+            vendorName: matchedEntry.vendorName,
+            vendorId: matchedEntry.vendorId,
+          },
+          { merge: true },
+        )
+      }),
+    )
+
     setEntries(entryList)
 
     if (!selectedVendorId && vendorList.length > 0) {
