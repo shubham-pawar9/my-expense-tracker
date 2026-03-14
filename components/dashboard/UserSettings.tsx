@@ -34,7 +34,7 @@ import {
   Dialog as MuiDialog,
 } from '@mui/material'
 import { Download, Share, ArrowBack, ChevronLeft, ChevronRight } from '@mui/icons-material'
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/auth/AuthProvider'
@@ -58,7 +58,7 @@ interface UserSettingsProps {
 }
 
 type SettingsTab = 'general' | 'daily-vendors'
-type VendorView = 'list' | 'add' | 'history' | 'detail'
+type VendorView = 'list' | 'add' | 'edit' | 'history' | 'detail'
 
 const VENDOR_TYPES: VendorType[] = ['Milk', 'Newspaper', 'Maid']
 
@@ -92,6 +92,7 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
 
   const [billMonth, setBillMonth] = useState(format(new Date(), 'yyyy-MM'))
   const [savingVendor, setSavingVendor] = useState(false)
+  const [editingVendorId, setEditingVendorId] = useState('')
 
   const { user } = useAuth()
   const isMobile = useMediaQuery('(max-width:600px)')
@@ -274,6 +275,20 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
     setDeliveryTime('')
     setNewspaperName('')
     setPricePerDay('')
+    setEditingVendorId('')
+  }
+
+  const populateVendorForm = (vendor: DailyVendor) => {
+    setEditingVendorId(vendor.id)
+    setVendorName(vendor.vendorName)
+    setVendorType(vendor.vendorType)
+    setPhoneNumber(vendor.phoneNumber || '')
+    setStartDate(vendor.startDate)
+    setPricePerLiter(vendor.pricePerLiter?.toString() || '')
+    setDailyQuantity(vendor.dailyQuantity?.toString() || '')
+    setDeliveryTime(vendor.deliveryTime || '')
+    setNewspaperName(vendor.newspaperName || '')
+    setPricePerDay(vendor.pricePerDay?.toString() || '')
   }
 
   const saveVendor = async () => {
@@ -290,7 +305,9 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
       return
     }
 
-    const vendorRef = doc(collection(db, 'dailyVendors'))
+    const vendorRef = editingVendorId
+      ? doc(db, 'dailyVendors', editingVendorId)
+      : doc(collection(db, 'dailyVendors'))
     const payload: Partial<DailyVendor> = {
       userId: authUser.uid,
       vendorName,
@@ -298,7 +315,7 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
       startDate,
       isActive: true,
       updatedAt: new Date(),
-      createdAt: new Date(),
+      ...(editingVendorId ? {} : { createdAt: new Date() }),
     }
 
     if (phoneNumber) payload.phoneNumber = phoneNumber
@@ -316,10 +333,10 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
 
     try {
       setSavingVendor(true)
-      await setDoc(vendorRef, payload)
+      await setDoc(vendorRef, payload, { merge: Boolean(editingVendorId) })
       await ensureDailyVendorEntries(authUser.uid)
       await loadVendorsAndEntries()
-      setSuccess('Vendor added and daily entries generated.')
+      setSuccess(editingVendorId ? 'Vendor updated successfully.' : 'Vendor added and daily entries generated.')
       resetVendorForm()
       setVendorView('list')
     } catch (error) {
@@ -328,6 +345,92 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
     } finally {
       setSavingVendor(false)
     }
+  }
+
+  const toggleVendorStatus = async (vendor: DailyVendor) => {
+    if (!user) return
+
+    const nextActiveStatus = !vendor.isActive
+    await setDoc(
+      doc(db, 'dailyVendors', vendor.id),
+      {
+        isActive: nextActiveStatus,
+        updatedAt: new Date(),
+      },
+      { merge: true },
+    )
+
+    if (!nextActiveStatus) {
+      const today = format(new Date(), 'yyyy-MM-dd')
+      const entrySnap = await getDocs(
+        query(
+          collection(db, 'vendorDailyEntries'),
+          where('userId', '==', user.uid),
+          where('vendorId', '==', vendor.id),
+        ),
+      )
+      const expenseSnap = await getDocs(
+        query(
+          collection(db, 'expenses'),
+          where('userId', '==', user.uid),
+          where('vendorId', '==', vendor.id),
+        ),
+      )
+
+      const batch = writeBatch(db)
+      entrySnap.docs.forEach((entryDoc) => {
+        const entryData = entryDoc.data() as VendorDailyEntry
+        if (entryData.date >= today) {
+          batch.set(doc(db, 'vendorDailyEntries', entryDoc.id), {
+            status: 'Skipped',
+            amount: 0,
+            updatedAt: new Date(),
+          }, { merge: true })
+        }
+      })
+      expenseSnap.docs.forEach((expenseDoc) => {
+        const expenseData = expenseDoc.data() as { date?: string }
+        if ((expenseData.date || '') >= today) {
+          batch.set(doc(db, 'expenses', expenseDoc.id), {
+            amount: 0,
+            updatedAt: new Date(),
+          }, { merge: true })
+        }
+      })
+      await batch.commit()
+    } else {
+      await ensureDailyVendorEntries(user.uid)
+    }
+
+    await loadVendorsAndEntries()
+    setSuccess(nextActiveStatus ? 'Vendor enabled.' : 'Vendor disabled. Future expenses will not be deducted.')
+  }
+
+  const deleteVendor = async (vendor: DailyVendor) => {
+    if (!user) return
+    const shouldDelete = window.confirm(`Delete ${vendor.vendorName}? This also removes related entries and expenses.`)
+    if (!shouldDelete) return
+
+    const entrySnap = await getDocs(
+      query(collection(db, 'vendorDailyEntries'), where('userId', '==', user.uid), where('vendorId', '==', vendor.id)),
+    )
+    const expenseSnap = await getDocs(
+      query(collection(db, 'expenses'), where('userId', '==', user.uid), where('vendorId', '==', vendor.id)),
+    )
+
+    const batch = writeBatch(db)
+    entrySnap.docs.forEach((entryDoc) => batch.delete(doc(db, 'vendorDailyEntries', entryDoc.id)))
+    expenseSnap.docs.forEach((expenseDoc) => batch.delete(doc(db, 'expenses', expenseDoc.id)))
+    batch.delete(doc(db, 'dailyVendors', vendor.id))
+    await batch.commit()
+
+    if (selectedVendorId === vendor.id) {
+      setSelectedVendorId('')
+      setVendorView('history')
+    }
+
+    await loadVendorsAndEntries()
+    setSuccess('Vendor and related records deleted.')
   }
 
   const getCalendarColor = (day: Date) => {
@@ -533,14 +636,14 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
 
                 {vendorView === 'list' && (
                   <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                    <Button variant="contained" onClick={() => setVendorView('add')}>Add Vendor</Button>
+                    <Button variant="contained" onClick={() => { resetVendorForm(); setVendorView('add') }}>Add Vendor</Button>
                     <Button variant="outlined" onClick={() => setVendorView('history')}>Vendor History</Button>
                   </Stack>
                 )}
 
-                {vendorView === 'add' && (
+                {(vendorView === 'add' || vendorView === 'edit') && (
                   <Paper sx={{ p: 2 }}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>Add Vendor Form</Typography>
+                    <Typography variant="h6" sx={{ mb: 2 }}>{vendorView === 'edit' ? 'Edit Vendor' : 'Add Vendor Form'}</Typography>
                     <Grid container spacing={2}>
                       <Grid item xs={12}><Typography variant="subtitle1">Basic Information</Typography></Grid>
                       <Grid item xs={12} md={6}>
@@ -598,7 +701,7 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
                           disabled={savingVendor || !vendorName.trim() || !startDate}
                           startIcon={savingVendor ? <CircularProgress size={18} color="inherit" /> : undefined}
                         >
-                          {savingVendor ? 'Saving...' : 'Save Vendor'}
+                          {savingVendor ? 'Saving...' : vendorView === 'edit' ? 'Update Vendor' : 'Save Vendor'}
                         </Button>
                       </Grid>
                     </Grid>
@@ -614,7 +717,7 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
                           <ListItemButton onClick={() => { setSelectedVendorId(vendor.id); setVendorView('detail') }}>
                             <ListItemText
                               primary={vendor.vendorName}
-                              secondary={`${vendor.vendorType}${vendor.newspaperName ? ` - ${vendor.newspaperName}` : ''}`}
+                              secondary={`${vendor.vendorType}${vendor.newspaperName ? ` - ${vendor.newspaperName}` : ''}${vendor.isActive ? '' : ' • Inactive'}`}
                             />
                           </ListItemButton>
                         </ListItem>
@@ -699,6 +802,33 @@ export const UserSettings: React.FC<UserSettingsProps> = ({ open, onClose }) => 
                     </Stack>
 
                     <Divider sx={{ my: 2 }} />
+                    <Stack direction={isMobile ? 'column' : 'row'} spacing={1.5} sx={{ mb: 2 }}>
+                      <Button
+                        variant="outlined"
+                        onClick={() => {
+                          populateVendorForm(selectedVendor)
+                          setVendorView('edit')
+                        }}
+                      >
+                        Edit Vendor Info
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color={selectedVendor.isActive ? 'warning' : 'success'}
+                        onClick={() => toggleVendorStatus(selectedVendor)}
+                      >
+                        {selectedVendor.isActive ? 'Disable Vendor' : 'Enable Vendor'}
+                      </Button>
+                      <Button variant="outlined" color="error" onClick={() => deleteVendor(selectedVendor)}>
+                        Delete Vendor
+                      </Button>
+                    </Stack>
+                    {!selectedVendor.isActive && (
+                      <Alert severity="info" sx={{ mb: 2 }}>
+                        This vendor is inactive. Vendor remains visible, but future expenses are not deducted.
+                      </Alert>
+                    )}
+
                     <Typography variant="h6" sx={{ mb: 1 }}>Monthly Bill Generator</Typography>
                     <Typography variant="body2">Vendor: {selectedVendor.vendorName}</Typography>
                     <Typography variant="body2">Month: {format(monthDate, 'MMMM')}</Typography>
