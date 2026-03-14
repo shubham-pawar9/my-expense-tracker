@@ -15,16 +15,16 @@ import {
 } from '@mui/material'
 
 import NoteAddOutlinedIcon from '@mui/icons-material/NoteAddOutlined'
-import AlarmOutlinedIcon from '@mui/icons-material/AlarmOutlined'
+// import AlarmOutlinedIcon from '@mui/icons-material/AlarmOutlined'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import CloseIcon from '@mui/icons-material/Close'
 import QuickNote from './QuickNote'
-import WaterReminderModal from './WaterReminderModal'
+// import WaterReminderModal from './WaterReminderModal'
 
 export default function QuickWidget() {
     const [open, setOpen] = useState(false)
     const [openQuickNote, setOpenQuickNote] = useState(false)
-    const [openWaterReminder, setOpenWaterReminder] = useState(false)
+    // const [openWaterReminder, setOpenWaterReminder] = useState(false)
 
     return (
         <>
@@ -90,18 +90,18 @@ export default function QuickWidget() {
                         <ListItemText primary="Quick Note" />
                     </ListItemButton>
 
-                    <ListItemButton onClick={() => setOpenWaterReminder(true)}>
+                    {/* <ListItemButton onClick={() => setOpenWaterReminder(true)}>
                         <ListItemIcon>
                             <AlarmOutlinedIcon />
                         </ListItemIcon>
                         <ListItemText primary="Water Reminder" />
-                    </ListItemButton>
+                    </ListItemButton> */}
                 </List>
             </Drawer>
-            <WaterReminderModal
+            {/* <WaterReminderModal
                 open={openWaterReminder}
                 onClose={() => setOpenWaterReminder(false)}
-            />
+            /> */}
             <Dialog
                 open={openQuickNote}
                 onClose={() => setOpenQuickNote(false)}

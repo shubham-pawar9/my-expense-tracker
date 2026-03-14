@@ -57,3 +57,38 @@ export interface DateSelection {
   month: number;
   year: number;
 }
+
+export type VendorType = 'Milk' | 'Newspaper' | 'Maid';
+
+export type VendorDeliveryStatus = 'Delivered' | 'Skipped';
+
+export interface DailyVendor {
+  id: string;
+  userId: string;
+  vendorName: string;
+  vendorType: VendorType;
+  phoneNumber?: string;
+  startDate: string;
+  pricePerLiter?: number;
+  dailyQuantity?: number;
+  deliveryTime?: string;
+  newspaperName?: string;
+  pricePerDay?: number;
+  isActive: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface VendorDailyEntry {
+  id: string;
+  userId: string;
+  vendorId: string;
+  vendorName: string;
+  vendorType: VendorType;
+  date: string;
+  status: VendorDeliveryStatus;
+  quantity: number;
+  amount: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
