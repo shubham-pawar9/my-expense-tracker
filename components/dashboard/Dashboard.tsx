@@ -33,6 +33,8 @@ import {
   BarChart as BarChartIcon,
   PieChart as PieChartIcon,
   Repeat as RepeatIcon,
+  DarkMode as DarkModeIcon,
+  LightMode as LightModeIcon,
 } from '@mui/icons-material'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { signOut } from 'firebase/auth'
@@ -48,6 +50,7 @@ import { YearlyChart } from '@/components/dashboard/YearlyChart'
 import { FixedExpensesCard } from '@/components/dashboard/FixedExpensesCard'
 import { DateSelection } from '@/types'
 import { ensureDailyVendorEntries } from '@/lib/dailyVendors'
+import { useColorMode } from '@/components/ThemeRegistry'
 
 type ViewMode = 'monthly' | 'yearly'
 
@@ -66,6 +69,7 @@ export const Dashboard: React.FC = () => {
   const router = useRouter()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const { mode, toggleColorMode } = useColorMode()
 
 
   useEffect(() => {
@@ -142,7 +146,7 @@ export const Dashboard: React.FC = () => {
               aria-label="view mode"
               size={isMobile ? 'small' : 'medium'}
               sx={{
-                bgcolor: 'white',
+                bgcolor: 'background.paper',
                 borderRadius: 2,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                 '& .MuiToggleButton-root': {
@@ -150,10 +154,10 @@ export const Dashboard: React.FC = () => {
                   py: 1,
                   border: 'none',
                   '&.Mui-selected': {
-                    bgcolor: '#667eea',
-                    color: 'white',
+                    bgcolor: 'primary.main',
+                    color: 'primary.contrastText',
                     '&:hover': {
-                      bgcolor: '#5a67d8',
+                      bgcolor: 'primary.dark',
                     },
                   },
                 },
@@ -235,7 +239,7 @@ export const Dashboard: React.FC = () => {
 
             {/* Monthly Summary for Current Month */}
             <Grid item xs={12} md={8}>
-              <Paper sx={{ p: 3 }}>
+              <Paper sx={{ p: 3, bgcolor: 'background.paper' }}>
                 <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CalendarIcon sx={{ color: '#667eea' }} />
                   Current Month Quick View
@@ -255,7 +259,7 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f8fafc' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* App Bar */}
       <AppBar
         position="fixed"
@@ -305,6 +309,21 @@ export const Dashboard: React.FC = () => {
               Add Expense
             </Button>
           </Tooltip>
+          <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <IconButton
+              color="inherit"
+              onClick={toggleColorMode}
+              sx={{
+                ml: 1,
+                bgcolor: 'rgba(255,255,255,0.1)',
+                '&:hover': {
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                },
+              }}
+            >
+              {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Logout">
             <IconButton
               color="inherit"
@@ -336,7 +355,9 @@ export const Dashboard: React.FC = () => {
             boxSizing: 'border-box',
             top: isMobile ? 0 : 64,
             height: isMobile ? '100%' : 'calc(100% - 64px)',
-            background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)',
+            background: mode === 'dark'
+              ? 'linear-gradient(180deg, #0f172a 0%, #020617 100%)'
+              : 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)',
             borderRight: 'none',
           },
         }}
