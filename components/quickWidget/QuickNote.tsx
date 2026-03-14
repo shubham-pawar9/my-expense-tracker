@@ -16,6 +16,7 @@ import {
     ListItemText,
     Badge,
 } from '@mui/material'
+import { alpha, useTheme } from '@mui/material/styles'
 
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
@@ -24,18 +25,43 @@ import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined'
 import ListAltOutlinedIcon from '@mui/icons-material/ListAltOutlined'
 import { useSnackbar } from 'notistack'
 
-const NOTE_COLORS = [
-    '#FFF9C4', // yellow
-    '#E3F2FD', // blue
-    '#E8F5E9', // green
-    '#FCE4EC', // pink
-    '#F3E5F5', // purple
+const NOTE_COLOR_SCHEMES = [
+    { id: 'yellow', light: '#FFF9C4', dark: '#5f4c00' },
+    { id: 'blue', light: '#E3F2FD', dark: '#0d3a5f' },
+    { id: 'green', light: '#E8F5E9', dark: '#124d2a' },
+    { id: 'pink', light: '#FCE4EC', dark: '#5f1f3c' },
+    { id: 'purple', light: '#F3E5F5', dark: '#4f295a' },
 ]
+
+const getColorIdFromValue = (value: string) => {
+    const found = NOTE_COLOR_SCHEMES.find(
+        (scheme) => scheme.light === value || scheme.dark === value
+    )
+    return found?.id
+}
 
 export default function QuickNote() {
     const { enqueueSnackbar } = useSnackbar()
+    const theme = useTheme()
+    const isDark = theme.palette.mode === 'dark'
+
+    const getColorById = (id: string) => {
+        const scheme = NOTE_COLOR_SCHEMES.find((color) => color.id === id)
+        if (!scheme) return NOTE_COLOR_SCHEMES[0][isDark ? 'dark' : 'light']
+        return scheme[isDark ? 'dark' : 'light']
+    }
+
+    const getCurrentColor = (note: any) => {
+        if (note.colorId) {
+            return getColorById(note.colorId)
+        }
+
+        const legacyColorId = typeof note.color === 'string' ? getColorIdFromValue(note.color) : null
+        return getColorById(legacyColorId || NOTE_COLOR_SCHEMES[0].id)
+    }
+
     const [text, setText] = useState('')
-    const [bgColor, setBgColor] = useState(NOTE_COLORS[0])
+    const [bgColorId, setBgColorId] = useState(NOTE_COLOR_SCHEMES[0].id)
     const [image, setImage] = useState<string | null>(null)
     const [openList, setOpenList] = useState(false)
     const [notes, setNotes] = useState<any[]>([])
@@ -45,7 +71,7 @@ export default function QuickNote() {
     const handleSelectNote = (note: any) => {
         setText(note.text || '')
         setImage(note.image || null)
-        setBgColor(note.color)
+        setBgColorId(note.colorId || getColorIdFromValue(note.color) || NOTE_COLOR_SCHEMES[0].id)
         setActiveNoteId(note.id)
         setOpenList(false)
     }
@@ -82,7 +108,7 @@ export default function QuickNote() {
                         ...note,
                         text,
                         image,
-                        color: bgColor,
+                        colorId: bgColorId,
                     }
                     : note
             )
@@ -92,7 +118,7 @@ export default function QuickNote() {
                 id: crypto.randomUUID(),
                 text,
                 image,
-                color: bgColor,
+                colorId: bgColorId,
                 createdAt: Date.now(),
             }
             updatedNotes = [newNote, ...existing]
@@ -114,12 +140,13 @@ export default function QuickNote() {
             sx={{
                 width: 280,
                 minHeight: 260,
-                bgcolor: bgColor,
+                bgcolor: getColorById(bgColorId),
                 borderRadius: 2,
                 boxShadow: 4,
                 p: 2,
                 display: 'flex',
                 flexDirection: 'column',
+                color: theme.palette.text.primary,
             }}
         >
             {/* Toolbar */}
@@ -205,26 +232,29 @@ export default function QuickNote() {
                 sx={{
                     flexGrow: 1,
                     fontSize: 14,
+                    '& .MuiInputBase-input': {
+                        color: theme.palette.text.primary,
+                    },
                 }}
             />
 
             {/* Color Picker */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Stack direction="row" spacing={1} mt={2}>
-                    {NOTE_COLORS.map((color) => (
+                    {NOTE_COLOR_SCHEMES.map((colorScheme) => (
                         <Box
-                            key={color}
-                            onClick={() => setBgColor(color)}
+                            key={colorScheme.id}
+                            onClick={() => setBgColorId(colorScheme.id)}
                             sx={{
                                 width: 20,
                                 height: 20,
-                                bgcolor: color,
+                                bgcolor: colorScheme[isDark ? 'dark' : 'light'],
                                 borderRadius: '50%',
                                 cursor: 'pointer',
                                 border:
-                                    bgColor === color
-                                        ? '2px solid #000'
-                                        : '1px solid #ccc',
+                                    bgColorId === colorScheme.id
+                                        ? `2px solid ${theme.palette.text.primary}`
+                                        : `1px solid ${alpha(theme.palette.text.primary, 0.35)}`,
                             }}
                         />
                     ))}
@@ -263,7 +293,7 @@ export default function QuickNote() {
                                     key={note.id}
                                     onClick={() => handleSelectNote(note)}
                                     sx={{
-                                        bgcolor: note.color,
+                                        bgcolor: getCurrentColor(note),
                                         mb: 1,
                                         borderRadius: 1,
                                     }}
